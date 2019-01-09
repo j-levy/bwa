@@ -34,6 +34,8 @@
 #  include "malloc_wrap.h"
 #endif
 
+#include "bwt.h" // adding prototypes enclosed in an extern "C"{}
+
 typedef uint64_t bgint_t;
 typedef int64_t sbgint_t;
 

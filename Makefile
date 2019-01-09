@@ -1,6 +1,6 @@
-CC=			gcc
+CC=			g++
 #CC=			clang --analyze
-CFLAGS=		-g -Wall -Wno-unused-function -O2
+CFLAGS=		-g -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive 
 WRAP_MALLOC=-DUSE_MALLOC_WRAPPERS
 AR=			ar
 DFLAGS=		-DHAVE_PTHREAD $(WRAP_MALLOC)
@@ -24,7 +24,7 @@ endif
 .c.o:
 		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
 
-all:$(PROG)
+all:clean $(PROG)
 
 bwa:libbwa.a $(AOBJS) main.o
 		$(CC) $(CFLAGS) $(DFLAGS) $(AOBJS) main.o -o $@ -L. -lbwa $(LIBS)

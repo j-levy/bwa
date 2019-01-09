@@ -48,7 +48,9 @@ void mem_pestat(const mem_opt_t *opt, int64_t l_pac, int n, const mem_alnreg_v *
 	int i, d, max;
 	uint64_v isize[4];
 	memset(pes, 0, 4 * sizeof(mem_pestat_t));
-	memset(isize, 0, sizeof(kvec_t(int)) * 4);
+	// J.L. 2018-12-21 15:37 (G++ error) error: types may not be defined in ‘sizeof’ expressions. Created intermediate variable to define the type outside sizeof
+	kvec_t(int) tmp;
+	memset(isize, 0, sizeof(tmp) * 4);
 	for (i = 0; i < n>>1; ++i) {
 		int dir;
 		int64_t is;
@@ -252,8 +254,8 @@ int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, co
 	extern int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id);
 	extern int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a);
 	extern void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, bseq1_t *s, mem_alnreg_v *a, int extra_flag, const mem_aln_t *m);
-	extern char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_alnreg_v *a, int l_query, const char *query);
-
+	// J.L. 2019-01-09 16:15 removed mem_gen_alt proto
+	
 	int n = 0, i, j, z[2], o, subo, n_sub, extra_flag = 1, n_pri[2], n_aa[2];
 	kstring_t str;
 	mem_aln_t h[2], g[2], aa[2][2];

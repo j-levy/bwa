@@ -3,6 +3,16 @@
 #include <stdlib.h>
 #include <limits.h>
 
+// J.L. 2019-01-09 17:10 adding extern C proto
+#ifdef __cplusplus
+extern "C"{
+void kt_for(int n_threads, void (*func)(void*,long,int), void *data, long n);
+
+
+}
+#endif
+
+
 /************
  * kt_for() *
  ************/
@@ -145,3 +155,5 @@ void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_d
 	pthread_mutex_destroy(&aux.mutex);
 	pthread_cond_destroy(&aux.cv);
 }
+
+

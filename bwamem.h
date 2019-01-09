@@ -179,6 +179,10 @@ extern "C" {
 	 * @param pes    inferred insert size distribution (output)
 	 */
 	void mem_pestat(const mem_opt_t *opt, int64_t l_pac, int n, const mem_alnreg_v *regs, mem_pestat_t pes[4]);
+	
+	// J.L. 2019-01-07 15:54 added prototype here in extern C	
+	extern void kt_for(int n_threads, void (*func)(void*,int,int), void *data, int n);
+	extern char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_alnreg_v *a, int l_query, const char *query);
 
 #ifdef __cplusplus
 }

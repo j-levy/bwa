@@ -445,14 +445,14 @@ int mem_sort_dedup_patch(const mem_opt_t *opt, const bntseq_t *bns, const uint8_
 		if (p->rid != a[i-1].rid || p->rb >= a[i-1].re + opt->max_chain_gap) continue; // then no need to go into the loop below
 		for (j = i - 1; j >= 0 && p->rid == a[j].rid && p->rb < a[j].re + opt->max_chain_gap; --j) {
 			mem_alnreg_t *q = &a[j];
-			int64_t or, oq, mr, mq;
+			int64_t pr, pq, mr, mq;
 			int score, w;
 			if (q->qe == q->qb) continue; // a[j] has been excluded
-			or = q->re - p->rb; // overlap length on the reference
-			oq = q->qb < p->qb? q->qe - p->qb : p->qe - q->qb; // overlap length on the query
+			pr = q->re - p->rb; // overlap length on the reference
+			pq = q->qb < p->qb? q->qe - p->qb : p->qe - q->qb; // overlap length on the query
 			mr = q->re - q->rb < p->re - p->rb? q->re - q->rb : p->re - p->rb; // min ref len in alignment
 			mq = q->qe - q->qb < p->qe - p->qb? q->qe - q->qb : p->qe - p->qb; // min qry len in alignment
-			if (or > opt->mask_level_redun * mr && oq > opt->mask_level_redun * mq) { // one of the hits is redundant
+			if (pr > opt->mask_level_redun * mr && pq > opt->mask_level_redun * mq) { // one of the hits is redundant
 				if (p->score < q->score) {
 					p->qe = p->qb;
 					break;
@@ -1005,7 +1005,6 @@ void mem_reorder_primary5(int T, mem_alnreg_v *a)
 // TODO (future plan): group hits into a uint64_t[] array. This will be cleaner and more flexible
 void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, bseq1_t *s, mem_alnreg_v *a, int extra_flag, const mem_aln_t *m)
 {
-	extern char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, mem_alnreg_v *a, int l_query, const char *query);
 	kstring_t str;
 	kvec_t(mem_aln_t) aa;
 	int k, l;
@@ -1207,7 +1206,8 @@ static void worker2(void *data, int i, int tid)
 
 void mem_process_seqs(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int64_t n_processed, int n, bseq1_t *seqs, const mem_pestat_t *pes0)
 {
-	extern void kt_for(int n_threads, void (*func)(void*,int,int), void *data, int n);
+	
+	
 	worker_t w;
 	mem_pestat_t pes[4];
 	double ctime, rtime;
