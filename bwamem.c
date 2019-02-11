@@ -16,6 +16,8 @@
 #include "ksort.h"
 #include "utils.h"
 
+
+
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
 #endif
@@ -90,9 +92,9 @@ mem_opt_t *mem_opt_init()
 #define intv_lt(a, b) ((a).info < (b).info)
 KSORT_INIT(mem_intv, bwtintv_t, intv_lt)
 
-typedef struct {
-	bwtintv_v mem, mem1, *tmpv[2];
-} smem_aux_t;
+	typedef struct {
+		bwtintv_v mem, mem1, *tmpv[2];
+	} smem_aux_t;
 
 static smem_aux_t *smem_aux_init()
 {
@@ -186,7 +188,7 @@ typedef struct { size_t n, m; mem_chain_t *a;  } mem_chain_v;
 #define chain_cmp(a, b) (((b).pos < (a).pos) - ((a).pos < (b).pos))
 KBTREE_INIT(chn, mem_chain_t, chain_cmp)
 
-// return 1 if the seed is merged into the chain
+	// return 1 if the seed is merged into the chain
 static int test_and_merge(const mem_opt_t *opt, int64_t l_pac, mem_chain_t *c, const mem_seed_t *p, int seed_rid)
 {
 	int64_t qend, rend, x, y;
@@ -303,9 +305,9 @@ mem_chain_v mem_chain(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bn
 
 	kv_resize(mem_chain_t, chain, kb_size(tree));
 
-	#define traverse_func(p_) (chain.a[chain.n++] = *(p_))
+#define traverse_func(p_) (chain.a[chain.n++] = *(p_))
 	__kb_traverse(mem_chain_t, tree, traverse_func);
-	#undef traverse_func
+#undef traverse_func
 
 	for (i = 0; i < chain.n; ++i) chain.a[i].frac_rep = (float)l_rep / len;
 	if (bwa_verbose >= 4) printf("* fraction of repetitive seeds: %.3f\n", (float)l_rep / len);
@@ -417,7 +419,7 @@ int mem_patch_reg(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac,
 	r = r > 0.? r : -r; // r = fabs(r)
 	if (bwa_verbose >= 4)
 		printf("* potential hit merge between [%d,%d)<=>[%ld,%ld) and [%d,%d)<=>[%ld,%ld), @ %s; w=%d, r=%.4g\n",
-			   a->qb, a->qe, (long)a->rb, (long)a->re, b->qb, b->qe, (long)b->rb, (long)b->re, bns->anns[a->rid].name, w, r);
+				a->qb, a->qe, (long)a->rb, (long)a->re, b->qb, b->qe, (long)b->rb, (long)b->re, bns->anns[a->rid].name, w, r);
 	if (a->re < b->rb || a->qe < b->qb) { // no overlap on query or on ref
 		if (w > opt->w<<1 || r >= PATCH_MAX_R_BW) return 0; // the bandwidth or the relative bandwidth is too large
 	} else if (w > opt->w<<2 || r >= PATCH_MAX_R_BW*2) return 0; // more permissive if overlapping on both ref and query
@@ -631,11 +633,15 @@ static inline int cal_max_gap(const mem_opt_t *opt, int qlen)
 
 void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av)
 {
+
+
 	int i, k, rid, max_off[2], aw[2]; // aw: actual bandwidth used in extension
 	int64_t l_pac = bns->l_pac, rmax[2], tmp, max = 0;
 	const mem_seed_t *s;
 	uint8_t *rseq = 0;
 	uint64_t *srt;
+
+	// c->n is &chn.a[i].n number of seeds
 
 	if (c->n == 0) return;
 	// get the max possible span
@@ -651,9 +657,12 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 	}
 	rmax[0] = rmax[0] > 0? rmax[0] : 0;
 	rmax[1] = rmax[1] < l_pac<<1? rmax[1] : l_pac<<1;
-	if (rmax[0] < l_pac && l_pac < rmax[1]) { // crossing the forward-reverse boundary; then choose one side
-		if (c->seeds[0].rbeg < l_pac) rmax[1] = l_pac; // this works because all seeds are guaranteed to be on the same strand
-		else rmax[0] = l_pac;
+	if (rmax[0] < l_pac && l_pac < rmax[1]) 
+	{ // crossing the forward-reverse boundary; then choose one side
+		if (c->seeds[0].rbeg < l_pac) 
+			rmax[1] = l_pac; // this works because all seeds are guaranteed to be on the same strand
+		else 
+			rmax[0] = l_pac;
 	}
 	// retrieve the reference sequence
 	rseq = bns_fetch_seq(bns, pac, &rmax[0], c->seeds[0].rbeg, &rmax[1], &rid);
@@ -664,11 +673,15 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		srt[i] = (uint64_t)c->seeds[i].score<<32 | i;
 	ks_introsort_64(c->n, srt);
 
-	for (k = c->n - 1; k >= 0; --k) {
+	for (k = c->n - 1; k >= 0; --k) 
+	{
 		mem_alnreg_t *a;
 		s = &c->seeds[(uint32_t)srt[k]];
 
-		for (i = 0; i < av->n; ++i) { // test whether extension has been made before
+
+		// av->n  : size of the array of mem_alnreg_t
+		for (i = 0; i < av->n; ++i) // test whether extension has been made before
+		{ 
 			mem_alnreg_t *p = &av->a[i];
 			int64_t rd;
 			int qd, w, max_gap;
@@ -688,12 +701,12 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		if (i < av->n) { // the seed is (almost) contained in an existing alignment; further testing is needed to confirm it is not leading to a different aln
 			if (bwa_verbose >= 4)
 				printf("** Seed(%d) [%ld;%ld,%ld] is almost contained in an existing alignment [%d,%d) <=> [%ld,%ld)\n",
-					   k, (long)s->len, (long)s->qbeg, (long)s->rbeg, av->a[i].qb, av->a[i].qe, (long)av->a[i].rb, (long)av->a[i].re);
+						k, (long)s->len, (long)s->qbeg, (long)s->rbeg, av->a[i].qb, av->a[i].qe, (long)av->a[i].rb, (long)av->a[i].re);
 			for (i = k + 1; i < c->n; ++i) { // check overlapping seeds in the same chain
 				const mem_seed_t *t;
 				if (srt[i] == 0) continue;
 				t = &c->seeds[(uint32_t)srt[i]];
-				if (t->len < s->len * .95) continue; // only check overlapping if t is long enough; TODO: more efficient by early stopping
+				if (t->len < s->len * .95) continue; // only check overlapping if t is long enough; TODo: more efficient by early stopping
 				if (s->qbeg <= t->qbeg && s->qbeg + s->len - t->qbeg >= s->len>>2 && t->qbeg - s->qbeg != t->rbeg - s->rbeg) break;
 				if (t->qbeg <= s->qbeg && t->qbeg + t->len - s->qbeg >= s->len>>2 && s->qbeg - t->qbeg != s->rbeg - t->rbeg) break;
 			}
@@ -711,15 +724,27 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		a->score = a->truesc = -1;
 		a->rid = c->rid;
 
+
+
+		/* ===NOTE: Start extension*/
+
+
 		if (bwa_verbose >= 4) err_printf("** ---> Extending from seed(%d) [%ld;%ld,%ld] @ %s <---\n", k, (long)s->len, (long)s->qbeg, (long)s->rbeg, bns->anns[c->rid].name);
 		if (s->qbeg) { // left extension
 			uint8_t *rs, *qs;
 			int qle, tle, gtle, gscore;
+
+			// ===NOTE: create local copy of beginning of query, reversed (because aligning left side, so from right to left!!)
 			qs = malloc(s->qbeg);
-			for (i = 0; i < s->qbeg; ++i) qs[i] = query[s->qbeg - 1 - i];
+			for (i = 0; i < s->qbeg; ++i) 
+				qs[i] = query[s->qbeg - 1 - i];
+
+			// ===NOTE: create local copy of beginning of reference, reversed (because aligning left side, so from right to left!!)
 			tmp = s->rbeg - rmax[0];
 			rs = malloc(tmp);
-			for (i = 0; i < tmp; ++i) rs[i] = rseq[tmp - 1 - i];
+			for (i = 0; i < tmp; ++i) 
+				rs[i] = rseq[tmp - 1 - i];
+			
 			for (i = 0; i < MAX_BAND_TRY; ++i) {
 				int prev = a->score;
 				aw[0] = opt->w << i;
@@ -770,6 +795,13 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 			}
 		} else a->qe = l_query, a->re = s->rbeg + s->len;
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
+
+
+
+
+
+
+
 
 		// compute seedcov
 		for (i = 0, a->seedcov = 0; i < c->n; ++i) {
@@ -1206,8 +1238,8 @@ static void worker2(void *data, int i, int tid)
 
 void mem_process_seqs(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int64_t n_processed, int n, bseq1_t *seqs, const mem_pestat_t *pes0)
 {
-	
-	
+
+
 	worker_t w;
 	mem_pestat_t pes[4];
 	double ctime, rtime;

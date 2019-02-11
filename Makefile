@@ -14,12 +14,28 @@ PROG=		bwa
 INCLUDES=	
 LIBS=		-lm -lz -lpthread
 SUBDIRS=	.
+VALGRIND=valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes
+
 
 ifeq ($(shell uname -s),Linux)
 	LIBS += -lrt
 endif
 
 .SUFFIXES:.c .o .cc
+
+
+run: all
+		./$(PROG) index fasta/target_batch.fasta
+		$(VALGRIND) ./$(PROG) mem fasta/target_batch.fasta fasta/query_batch.fasta > res.log
+
+short-index: all 
+		./$(PROG) index /data/work/jlevy/hg19_short/chr01.fasta
+
+short: all
+		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr01.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
+
+srr150: all
+		./$(PROG) mem -v 4 -t 12 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa.log
 
 .c.o:
 		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
