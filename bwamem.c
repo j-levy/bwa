@@ -832,11 +832,17 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				score_right = gscore;
 			}
 		} else {
-			a->qe = l_query, a->re = s->rbeg + s->len;
+			score_right = s->len * opt->a;
+			a->qe = l_query;
+			a->re = s->rbeg + s->len;
 		}
 
 		//gather results.
-		a->score = score_left + score_right - (sides_to_extend == 2? s->len * opt->a : 0);
+		if (sides_to_extend > 0)
+			a->score = score_left + score_right - s->len * opt->a;
+		if (sides_to_extend == 0)
+			a->score = s->len * opt->a;
+
 		a->truesc = a->score;
 
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
