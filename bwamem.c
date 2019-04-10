@@ -739,16 +739,22 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 
 		int query_end_l = 0;
 		int ref_end_l = 0;
-		int score_l = 0;
+		int score_left = 0;
 		int query_end_r = 0;
 		int ref_end_r = 0;
-		int score_r = 0;
+		int score_right = 0;
 
 
 
 		/* ===NOTE: Start extension*/
-
 		if (bwa_verbose >= 4) err_printf("** ---> Extending from seed(%d) [%ld;%ld,%ld] @ %s <---\n", k, (long)s->len, (long)s->qbeg, (long)s->rbeg, bns->anns[c->rid].name);
+		// count if there's 0, 1 or 2 extensions to do
+		int sides_to_extend = 0;
+		if (s->qbeg)
+			sides_to_extend++;
+		if (s->qbeg + s->len != l_query)
+			sides_to_extend++;
+	
 		if (s->qbeg) { // left extension
 			uint8_t *rs, *qs;
 			int qle, tle, gtle, gscore;
@@ -773,21 +779,27 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Left ref:   "); for (j = 0; j < tmp; ++j) putchar("ACGTN"[(int)rs[j]]); putchar('\n');
 					printf("*** Left query: "); for (j = 0; j < s->qbeg; ++j) putchar("ACGTN"[(int)qs[j]]); putchar('\n');
 				}
-				a->score = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
-				score_l = a->score - prev;
-				if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
-				if (a->score == prev || max_off[0] < (aw[0]>>1) + (aw[0]>>2)) break;
+				score_left = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
+				
+				// NOTE: disabled verbose prints because they're not viable anymore
+				//if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
+				
+				if (score_left == prev || max_off[0] < (aw[0]>>1) + (aw[0]>>2)) break;
 			}
 			// check whether we prefer to reach the end of the query
-			if (gscore <= 0 || gscore <= a->score - opt->pen_clip5) { // local extension
+			if (gscore <= 0 || gscore <= score_left - opt->pen_clip5) { // local extension
 				a->qb = s->qbeg - qle, a->rb = s->rbeg - tle;
-				a->truesc = a->score;
+				//score_left = a->score;
 			} else { // to-end extension
 				a->qb = 0, a->rb = s->rbeg - gtle;
-				a->truesc = gscore;
+				score_left = gscore;
 			}
 			free(qs); free(rs);
-		} else a->score = a->truesc = s->len * opt->a, a->qb = 0, a->rb = s->rbeg;
+		} else {
+			score_left = s->len * opt->a;
+			a->qb = 0;
+			a->rb = s->rbeg;
+		}
 
 		if (s->qbeg + s->len != l_query) { // right extension
 			int qle, tle, qe, re, gtle, gscore, sc0 = a->score;
@@ -795,34 +807,44 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 			re = s->rbeg + s->len - rmax[0];
 			assert(re >= 0);
 			for (i = 0; i < MAX_BAND_TRY; ++i) {
-				int prev = a->score;
+				int prev = s->len * opt->a;
 				aw[1] = opt->w << i;
 				if (bwa_verbose >= 4) {
 					int j;
 					printf("*** Right ref:   "); for (j = 0; j < rmax[1] - rmax[0] - re; ++j) putchar("ACGTN"[(int)rseq[re+j]]); putchar('\n');
 					printf("*** Right query: "); for (j = 0; j < l_query - qe; ++j) putchar("ACGTN"[(int)query[qe+j]]); putchar('\n');
 				}
-				int t = a->score;
-				a->score = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, sc0, &qle, &tle, &gtle, &gscore, &max_off[1]);
-				score_r = a->score - t;
-				if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[1], max_off[1]); fflush(stdout); }
+				score_right = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[1]);
+
+
+				// NOTE: disabled verose print as they're not viable anymore
+				//if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[1], max_off[1]); fflush(stdout); }
+
 				if (a->score == prev || max_off[1] < (aw[1]>>1) + (aw[1]>>2)) break;
 			}
 			// similar to the above
-			if (gscore <= 0 || gscore <= a->score - opt->pen_clip3) { // local extension
+			if (gscore <= 0 || gscore <= score_right - opt->pen_clip3) { // local extension
 				a->qe = qe + qle, a->re = rmax[0] + re + tle;
-				a->truesc += a->score - sc0;
+				//score_right = 
+				//a->truesc += a->score - sc0;
 			} else { // to-end extension
 				a->qe = l_query, a->re = rmax[0] + re + gtle;
-				a->truesc += gscore - sc0;
+				score_right = gscore;
 			}
-		} else a->qe = l_query, a->re = s->rbeg + s->len;
+		} else {
+			a->qe = l_query, a->re = s->rbeg + s->len;
+		}
+
+		//gather results.
+		a->score = score_left + score_right - s->len * opt->a;
+		a->truesc = a->score;
+
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
 
 		
 		#ifdef DEBUG
 		fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n",
-			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_l, query_end_r, ref_end_r, score_r);
+			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_left, query_end_r, ref_end_r, score_right);
 		score_printerz(a);
 		#endif
 
