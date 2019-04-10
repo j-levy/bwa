@@ -47,6 +47,18 @@
 
 static const bntseq_t *global_bns = 0; // for debugging only
 
+void score_printerz(mem_alnreg_t *res)
+{
+	fprintf(stderr, "##### SCORE PRINTER #####\n");
+	//part_printerz(res->part[LEFT], LEFT);
+	//part_printerz(res->part[RIGHT], RIGHT);
+
+	fprintf(stderr, "[SCOR_PRINT] qb, qe = (%d, %d), diff=%d\n", res->qb, res->qe, res->qe - res->qb);
+	fprintf(stderr, "[SCOR_PRINT] rb, re = (%d, %d), diff=%d\n", res->rb, res->re, res->re - res->rb);
+	fprintf(stderr, "[SCOR_PRINT] score, truesc = (%d, %d)\n", res->score, res->truesc);
+}
+
+
 mem_opt_t *mem_opt_init()
 {
 	mem_opt_t *o;
@@ -633,27 +645,28 @@ static inline int cal_max_gap(const mem_opt_t *opt, int qlen)
 
 void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av)
 {
-
-
 	int i, k, rid, max_off[2], aw[2]; // aw: actual bandwidth used in extension
 	int64_t l_pac = bns->l_pac, rmax[2], tmp, max = 0;
 	const mem_seed_t *s;
 	uint8_t *rseq = 0;
 	uint64_t *srt;
 
-	// c->n is &chn.a[i].n number of seeds
+	// c->n is &chn.a[i].n number of seeds inside a chain.
 
 	if (c->n == 0) return;
 	// get the max possible span
-	rmax[0] = l_pac<<1; rmax[1] = 0;
-	for (i = 0; i < c->n; ++i) {
+	rmax[0] = l_pac<<1; 
+	rmax[1] = 0;
+	for (i = 0; i < c->n; ++i) 
+	{
 		int64_t b, e;
 		const mem_seed_t *t = &c->seeds[i];
 		b = t->rbeg - (t->qbeg + cal_max_gap(opt, t->qbeg));
 		e = t->rbeg + t->len + ((l_query - t->qbeg - t->len) + cal_max_gap(opt, l_query - t->qbeg - t->len));
 		rmax[0] = rmax[0] < b? rmax[0] : b;
 		rmax[1] = rmax[1] > e? rmax[1] : e;
-		if (t->len > max) max = t->len;
+		if (t->len > max) 
+			max = t->len;
 	}
 	rmax[0] = rmax[0] > 0? rmax[0] : 0;
 	rmax[1] = rmax[1] < l_pac<<1? rmax[1] : l_pac<<1;
@@ -724,10 +737,16 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		a->score = a->truesc = -1;
 		a->rid = c->rid;
 
+		int query_end_l = 0;
+		int ref_end_l = 0;
+		int score_l = 0;
+		int query_end_r = 0;
+		int ref_end_r = 0;
+		int score_r = 0;
+
 
 
 		/* ===NOTE: Start extension*/
-
 
 		if (bwa_verbose >= 4) err_printf("** ---> Extending from seed(%d) [%ld;%ld,%ld] @ %s <---\n", k, (long)s->len, (long)s->qbeg, (long)s->rbeg, bns->anns[c->rid].name);
 		if (s->qbeg) { // left extension
@@ -745,6 +764,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 			for (i = 0; i < tmp; ++i) 
 				rs[i] = rseq[tmp - 1 - i];
 			
+			// ===NOTE: try for differend wide-band sizes. Will be removed for GPU (useless)
 			for (i = 0; i < MAX_BAND_TRY; ++i) {
 				int prev = a->score;
 				aw[0] = opt->w << i;
@@ -754,6 +774,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Left query: "); for (j = 0; j < s->qbeg; ++j) putchar("ACGTN"[(int)qs[j]]); putchar('\n');
 				}
 				a->score = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
+				score_l = a->score - prev;
 				if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
 				if (a->score == prev || max_off[0] < (aw[0]>>1) + (aw[0]>>2)) break;
 			}
@@ -781,7 +802,9 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Right ref:   "); for (j = 0; j < rmax[1] - rmax[0] - re; ++j) putchar("ACGTN"[(int)rseq[re+j]]); putchar('\n');
 					printf("*** Right query: "); for (j = 0; j < l_query - qe; ++j) putchar("ACGTN"[(int)query[qe+j]]); putchar('\n');
 				}
+				int t = a->score;
 				a->score = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, sc0, &qle, &tle, &gtle, &gscore, &max_off[1]);
+				score_r = a->score - t;
 				if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[1], max_off[1]); fflush(stdout); }
 				if (a->score == prev || max_off[1] < (aw[1]>>1) + (aw[1]>>2)) break;
 			}
@@ -796,11 +819,11 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		} else a->qe = l_query, a->re = s->rbeg + s->len;
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
 
+		
 
-
-
-
-
+		fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n",
+			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_l, query_end_r, ref_end_r, score_r);
+		score_printerz(a);
 
 
 		// compute seedcov
@@ -814,7 +837,8 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 
 		a->frac_rep = c->frac_rep;
 	}
-	free(srt); free(rseq);
+	free(srt); 
+	free(rseq);
 }
 
 /*****************************
@@ -1150,6 +1174,8 @@ mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *
 		w2 = w2 < opt->w<<2? w2 : opt->w<<2;
 		a.cigar = bwa_gen_cigar2(opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, w2, bns->l_pac, pac, qe - qb, (uint8_t*)&query[qb], rb, re, &score, &a.n_cigar, &NM);
 		if (bwa_verbose >= 4) printf("* Final alignment: w2=%d, global_sc=%d, local_sc=%d\n", w2, score, ar->truesc);
+
+        fprintf(stderr, "* Final alignment: w2=%d, global_sc=%d, local_sc=%d, (qb, qe) = (%d, %d), (rb, re) = (%d, %d)\n", w2, score, ar->truesc, qb, qe, rb, re);
 		if (score == last_sc || w2 == opt->w<<2) break; // it is possible that global alignment and local alignment give different scores
 		last_sc = score;
 		w2 <<= 1;

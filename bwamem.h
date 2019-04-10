@@ -184,6 +184,9 @@ extern "C" {
 	extern void kt_for(int n_threads, void (*func)(void*,int,int), void *data, int n);
 	extern char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_alnreg_v *a, int l_query, const char *query);
 
+	void score_printerz(mem_alnreg_t *res);
+
+
 #ifdef __cplusplus
 }
 #endif

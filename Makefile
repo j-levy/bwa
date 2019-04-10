@@ -32,10 +32,20 @@ short-index: all
 		./$(PROG) index /data/work/jlevy/hg19_short/chr01.fasta
 
 short: all
+		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr1p1.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
+
+
+short2: all
 		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr01.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
+
+
+short3: all
+		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr2.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
 
 srr150: all
 		./$(PROG) mem -v 4 -t 12 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa.log
+
+
 
 .c.o:
 		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
