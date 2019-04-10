@@ -16,7 +16,7 @@
 #include "ksort.h"
 #include "utils.h"
 
-
+//#define DEBUG
 
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
@@ -820,11 +820,11 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
 
 		
-
+		#ifdef DEBUG
 		fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n",
 			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_l, query_end_r, ref_end_r, score_r);
 		score_printerz(a);
-
+		#endif
 
 		// compute seedcov
 		for (i = 0, a->seedcov = 0; i < c->n; ++i) {
