@@ -47,7 +47,12 @@ srr150: all
 
 
 1000: all
-		./$(PROG) mem -v 3 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1000_1.fastq /data/work/jlevy/srr/150/1000_2.fastq > /data/work/jlevy/srr/150/res_bwa_1000.log
+		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1000_1.fastq /data/work/jlevy/srr/150/1000_2.fastq > /data/work/jlevy/srr/150/res_bwa_1000.log
+
+10: all
+		./$(PROG) mem -v 4 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/10_1.fastq /data/work/jlevy/srr/150/10_2.fastq > /data/work/jlevy/srr/150/res_bwa_10.sam
+
+
 
 .c.o:
 		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
