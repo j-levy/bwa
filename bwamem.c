@@ -16,7 +16,9 @@
 #include "ksort.h"
 #include "utils.h"
 
-//#define DEBUG
+//#define DEBUG2
+//#define DEBUG3
+
 
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
@@ -47,15 +49,22 @@
 
 static const bntseq_t *global_bns = 0; // for debugging only
 
+
+void part_printerz(reg_alnpart_t res, int SIDE)
+{
+	fprintf(stderr, "\t\t[PART_PRINT %s] query_end = (%d), ref_end = (%d), score = (%d)\n", (SIDE == LEFT ? " LEFT" : "RIGHT"), res.query_end, res.ref_end, res.score);
+}
+
 void score_printerz(mem_alnreg_t *res)
 {
-	fprintf(stderr, "##### SCORE PRINTER #####\n");
-	//part_printerz(res->part[LEFT], LEFT);
-	//part_printerz(res->part[RIGHT], RIGHT);
+	//fprintf(stderr, "##### SCORE PRINTER #####\n");
 
-	fprintf(stderr, "[SCOR_PRINT] qb, qe = (%d, %d), diff=%d\n", res->qb, res->qe, res->qe - res->qb);
-	fprintf(stderr, "[SCOR_PRINT] rb, re = (%d, %d), diff=%d\n", res->rb, res->re, res->re - res->rb);
-	fprintf(stderr, "[SCOR_PRINT] score, truesc = (%d, %d)\n", res->score, res->truesc);
+	fprintf(stderr, "\t[SCOR_PRINT] align_sides=%d, where_is_long=%s\n", res->align_sides, (res->where_is_long == LEFT ? " LEFT" : "RIGHT"));
+	fprintf(stderr, "\t[SCOR_PRINT] qb, qe = (%d, %d), rb, re = (%d, %d), score, truesc = (%d, %d), %s %s \n", res->qb, res->qe, res->rb, res->re, res->score, res->truesc, (res->qb < 0? "ERROR qb<0":""), (res->qe > 150? "ERROR qe>150":""));
+	fprintf(stderr, "\t[SCOR_PRINT] query_seed_begin=%d, ref_seed_begin=%d, seedlen0=%d\n", res->query_seed_begin, res->ref_seed_begin, res->seedlen0);
+	part_printerz(res->part[LEFT], LEFT);
+	part_printerz(res->part[RIGHT], RIGHT);
+	fprintf(stderr, "\n");
 }
 
 
@@ -744,7 +753,20 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		int ref_end_r = 0;
 		int score_right = 0;
 
+        uint32_t l_refer = rmax[1] - rmax[0];
 
+        /*OK, starting from here, we compute all alignments as if they were 2 simple alignments:
+        */
+        // rename to make things consistant
+        
+        int left_query_length = s->qbeg;
+        int left_refer_length = s->rbeg - rmax[0];
+        int right_query_length = l_query - (left_query_length + s->len);
+        int right_refer_length = l_refer - (left_refer_length + s->len);
+        uint8_t *left_query = NULL;
+        uint8_t *left_refer = NULL;
+        uint8_t *right_query = &query[left_query_length + s->len];
+        uint8_t *right_refer = &rseq[left_refer_length + s->len];
 
 		/* ===NOTE: Start extension*/
 		if (bwa_verbose >= 4) err_printf("** ---> Extending from seed(%d) [%ld;%ld,%ld] @ %s <---\n", k, (long)s->len, (long)s->qbeg, (long)s->rbeg, bns->anns[c->rid].name);
@@ -779,6 +801,12 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Left ref:   "); for (j = 0; j < tmp; ++j) putchar("ACGTN"[(int)rs[j]]); putchar('\n');
 					printf("*** Left query: "); for (j = 0; j < s->qbeg; ++j) putchar("ACGTN"[(int)qs[j]]); putchar('\n');
 				}
+				#ifdef DEBUG3
+				int j;
+				fprintf(stderr, "*** target: "); for (j = 0; j < tmp; ++j) fprintf(stderr, "%c", "ACGTN"[(int)rs[j]]); fprintf(stderr, "\n");
+				fprintf(stderr, "*** query : "); for (j = 0; j < s->qbeg; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)qs[j]]); fprintf(stderr, "\n");
+				#endif
+
 				score_left = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
 				
 				// NOTE: disabled verbose prints because they're not viable anymore
@@ -794,11 +822,18 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				a->qb = 0, a->rb = s->rbeg - gtle;
 				score_left = gscore;
 			}
+			a->part[LEFT].score = score_left;
+			a->part[LEFT].query_end = qle;
+			a->part[LEFT].ref_end = tle;
 			free(qs); free(rs);
 		} else {
 			score_left = s->len * opt->a;
 			a->qb = 0;
 			a->rb = s->rbeg;
+
+			a->part[LEFT].score = score_left;
+			a->part[LEFT].query_end = 0;
+			a->part[LEFT].ref_end = 0;
 		}
 
 		if (s->qbeg + s->len != l_query) { // right extension
@@ -814,6 +849,12 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Right ref:   "); for (j = 0; j < rmax[1] - rmax[0] - re; ++j) putchar("ACGTN"[(int)rseq[re+j]]); putchar('\n');
 					printf("*** Right query: "); for (j = 0; j < l_query - qe; ++j) putchar("ACGTN"[(int)query[qe+j]]); putchar('\n');
 				}
+				#ifdef DEBUG3
+				int j;
+				fprintf(stderr, "*** target: "); for (j = 0; j < rmax[1] - rmax[0] - re; ++j) fprintf(stderr, "%c", "ACGTN"[(int)rseq[re+j]]); fprintf(stderr, "\n");
+				fprintf(stderr, "*** query : "); for (j = 0; j < l_query - qe; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)query[qe+j]]); fprintf(stderr, "\n");
+				#endif
+				
 				score_right = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[1]);
 
 
@@ -831,11 +872,20 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				a->qe = l_query, a->re = rmax[0] + re + gtle;
 				score_right = gscore;
 			}
+			a->part[RIGHT].score = score_right;
+			a->part[RIGHT].query_end = qle;
+			a->part[RIGHT].ref_end = tle;
 		} else {
 			score_right = s->len * opt->a;
 			a->qe = l_query;
 			a->re = s->rbeg + s->len;
+
+			a->part[RIGHT].score = score_right;
+			a->part[RIGHT].query_end = 0;
+			a->part[RIGHT].ref_end = 0;
 		}
+		a->query_seed_begin = s->qbeg;
+		a->ref_seed_begin = s->rbeg;
 
 		//gather results.
 		if (sides_to_extend > 0)
@@ -848,11 +898,15 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		if (bwa_verbose >= 4) printf("*** Added alignment region: [%d,%d) <=> [%ld,%ld); score=%d; {left,right}_bandwidth={%d,%d}\n", a->qb, a->qe, (long)a->rb, (long)a->re, a->score, aw[0], aw[1]);
 
 		
-		#ifdef DEBUG
+		#ifdef DEBUG2
 		fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n",
 			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_left, query_end_r, ref_end_r, score_right);
 		score_printerz(a);
 		#endif
+		
+		#ifdef DEBUG3
+        fprintf(stderr, "align %d\tquery:\t<%d>\t[%d]\t<%d>\trefer:\t<%d>\t[%d]\t<%d>\ts->rbeg=%d\n", k, left_query_length, s->len, right_query_length, left_refer_length, s->len, right_refer_length, s->rbeg);
+        #endif
 
 		// compute seedcov
 		for (i = 0, a->seedcov = 0; i < c->n; ++i) {
@@ -989,7 +1043,8 @@ void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq
 		kputsn("\tNM:i:", 6, str); kputw(p->NM, str);
 		kputsn("\tMD:Z:", 6, str); kputs((char*)(p->cigar + p->n_cigar), str);
 	}
-	if (m && m->n_cigar) { kputsn("\tMC:Z:", 6, str); add_cigar(opt, m, str, which); }
+	// tag disabled as it is not present in v.0.7.13
+	//if (m && m->n_cigar) { kputsn("\tMC:Z:", 6, str); add_cigar(opt, m, str, which); }
 	if (p->score >= 0) { kputsn("\tAS:i:", 6, str); kputw(p->score, str); }
 	if (p->sub >= 0) { kputsn("\tXS:i:", 6, str); kputw(p->sub, str); }
 	if (bwa_rg_id[0]) { kputsn("\tRG:Z:", 6, str); kputs(bwa_rg_id, str); }
