@@ -76,7 +76,7 @@ mem_opt_t *mem_opt_init()
 	o->a = 1; o->b = 4;
 	o->o_del = o->o_ins = 6;
 	o->e_del = o->e_ins = 1;
-	o->w = 100;
+	o->w = 300;
 	o->T = 30;
 	o->zdrop = 0;
 	o->pen_unpaired = 17;
@@ -807,7 +807,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				fprintf(stderr, "*** query : "); for (j = 0; j < s->qbeg; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)qs[j]]); fprintf(stderr, "\n");
 				#endif
 
-				score_left = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
+				score_left = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, opt->w, opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
 				
 				// NOTE: disabled verbose prints because they're not viable anymore
 				//if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
@@ -855,7 +855,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				fprintf(stderr, "*** query : "); for (j = 0; j < l_query - qe; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)query[qe+j]]); fprintf(stderr, "\n");
 				#endif
 				
-				score_right = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[1]);
+				score_right = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, opt->w, opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[1]);
 
 
 				// NOTE: disabled verose print as they're not viable anymore
@@ -864,7 +864,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				if (a->score == prev || max_off[1] < (aw[1]>>1) + (aw[1]>>2)) break;
 			}
 			// similar to the above
-			if (gscore <= 0 || gscore <= score_right - opt->pen_clip3) { // local extension
+			if (gscore <= 0 || gscore <= score_right - opt->pen_clip5) { // local extension
 				a->qe = qe + qle, a->re = rmax[0] + re + tle;
 				//score_right = 
 				//a->truesc += a->score - sc0;
