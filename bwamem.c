@@ -16,7 +16,7 @@
 #include "ksort.h"
 #include "utils.h"
 
-//#define DEBUG2
+#define DEBUG2
 //#define DEBUG3
 
 
@@ -899,8 +899,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 
 		
 		#ifdef DEBUG2
-		fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n",
-			k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_left, query_end_r, ref_end_r, score_right);
+		//fprintf(stderr, "SEED %d length %d score %d\n===[PART_PRINT  LEFT] query_end = (%d), ref_end = (%d), score = (%d)\n===[PART_PRINT RIGHT] query_end = (%d), ref_end = (%d), score = (%d)\n", k, s->len, s->len * opt->a, query_end_l, ref_end_l, score_left, query_end_r, ref_end_r, score_right);
 		score_printerz(a);
 		#endif
 		
