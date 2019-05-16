@@ -49,6 +49,10 @@ srr150: all
 1000: all
 		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1000_1.fastq /data/work/jlevy/srr/150/1000_2.fastq > /data/work/jlevy/srr/150/res_bwa_1000.log
 
+10k: all
+		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/10000_1.fastq /data/work/jlevy/srr/150/10000_2.fastq > /data/work/jlevy/srr/150/res_bwa-gasal2_10000.sam
+		sha256sum /data/work/jlevy/srr/150/res_bwa-gasal2_10000.sam
+
 1: all
 		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1_1.fastq /data/work/jlevy/srr/150/1_2.fastq > /data/work/jlevy/srr/150/res_bwa_1.sam
 
