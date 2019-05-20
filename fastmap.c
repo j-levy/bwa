@@ -117,6 +117,8 @@ FILE* f_exec_time;
 
 int main_mem(int argc, char *argv[])
 {
+
+
 	mem_opt_t *opt, opt0;
 	int fd, fd2, i, c, ignore_alt = 0, no_mt_io = 0;
 	int fixed_chunk_size = -1;
@@ -366,6 +368,7 @@ int main_mem(int argc, char *argv[])
 	}
 
 	double time_extend = realtime();
+	extension_time[0].gpu_mem_alloc += (realtime() - time_extend);
 
 	bwa_print_sam_hdr(aux.idx->bns, hdr_line);
 	aux.actual_chunk_size = fixed_chunk_size > 0? fixed_chunk_size : opt->chunk_size * opt->n_threads;

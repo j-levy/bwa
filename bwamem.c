@@ -652,8 +652,12 @@ static inline int cal_max_gap(const mem_opt_t *opt, int qlen)
 
 #define MAX_BAND_TRY  1
 
-void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av)
+void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av, int tid)
 {
+	extern time_struct *extension_time;
+    extern uint64_t *no_of_extensions;
+	double time_extend;
+
 	int i, k, rid, max_off[2], aw[2]; // aw: actual bandwidth used in extension
 	int64_t l_pac = bns->l_pac, rmax[2], tmp, max = 0;
 	const mem_seed_t *s;
@@ -806,9 +810,11 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				fprintf(stderr, "*** target: "); for (j = 0; j < tmp; ++j) fprintf(stderr, "%c", "ACGTN"[(int)rs[j]]); fprintf(stderr, "\n");
 				fprintf(stderr, "*** query : "); for (j = 0; j < s->qbeg; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)qs[j]]); fprintf(stderr, "\n");
 				#endif
-
+				no_of_extensions[tid]++;
+				time_extend = realtime();
 				score_left = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, opt->w, opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
-				
+				extension_time[tid].aln_kernel += (realtime() - time_extend);
+
 				// NOTE: disabled verbose prints because they're not viable anymore
 				//if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
 				
@@ -854,9 +860,10 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 				fprintf(stderr, "*** target: "); for (j = 0; j < rmax[1] - rmax[0] - re; ++j) fprintf(stderr, "%c", "ACGTN"[(int)rseq[re+j]]); fprintf(stderr, "\n");
 				fprintf(stderr, "*** query : "); for (j = 0; j < l_query - qe; ++j)  fprintf(stderr, "%c", "ACGTN"[(int)query[qe+j]]); fprintf(stderr, "\n");
 				#endif
-				
+				no_of_extensions[tid]++;
+				time_extend = realtime();
 				score_right = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, opt->w, opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[1]);
-
+				extension_time[tid].aln_kernel += (realtime() - time_extend);
 
 				// NOTE: disabled verose print as they're not viable anymore
 				//if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[1], max_off[1]); fflush(stdout); }
@@ -1188,8 +1195,13 @@ void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, 
 	}
 }
 
-mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int l_seq, char *seq, void *buf)
+mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int l_seq, char *seq, void *buf, int tid)
 {
+
+	extern time_struct *extension_time;
+    extern uint64_t *no_of_extensions;
+	double time_extend;
+
 	int i;
 	mem_chain_v chn;
 	mem_alnreg_v regs;
@@ -1206,7 +1218,7 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 	for (i = 0; i < chn.n; ++i) {
 		mem_chain_t *p = &chn.a[i];
 		if (bwa_verbose >= 4) err_printf("* ---> Processing chain(%d) <---\n", i);
-		mem_chain2aln(opt, bns, pac, l_seq, (uint8_t*)seq, p, &regs);
+		mem_chain2aln(opt, bns, pac, l_seq, (uint8_t*)seq, p, &regs, tid);
 		free(chn.a[i].seeds);
 	}
 	free(chn.a);
@@ -1319,12 +1331,12 @@ static void worker1(void *data, int i, int tid)
 	worker_t *w = (worker_t*)data;
 	if (!(w->opt->flag&MEM_F_PE)) {
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s' <=====\n", w->seqs[i].name);
-		w->regs[i] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i].l_seq, w->seqs[i].seq, w->aux[tid]);
+		w->regs[i] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i].l_seq, w->seqs[i].seq, w->aux[tid], tid);
 	} else {
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s'/1 <=====\n", w->seqs[i<<1|0].name);
-		w->regs[i<<1|0] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|0].l_seq, w->seqs[i<<1|0].seq, w->aux[tid]);
+		w->regs[i<<1|0] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|0].l_seq, w->seqs[i<<1|0].seq, w->aux[tid], tid);
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s'/2 <=====\n", w->seqs[i<<1|1].name);
-		w->regs[i<<1|1] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|1].l_seq, w->seqs[i<<1|1].seq, w->aux[tid]);
+		w->regs[i<<1|1] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|1].l_seq, w->seqs[i<<1|1].seq, w->aux[tid], tid);
 	}
 }
 
