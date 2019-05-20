@@ -108,4 +108,14 @@ static inline uint64_t hash_64(uint64_t key)
 	return key;
 }
 
+typedef struct{
+	double host_mem_alloc;
+	double gpu_mem_alloc;
+	double aln_kernel;
+	double gpu_mem_free;
+	double host_mem_free;
+	double get_results_wasted;
+	double get_results_actual;
+} time_struct;
+
 #endif

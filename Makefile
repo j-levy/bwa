@@ -34,13 +34,9 @@ short-index: all
 short: all
 		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr1p1.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
 
-
-short2: all
-		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr01.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
-
-
-short3: all
-		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr2.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
+125k: all
+		./$(PROG) mem -t 1 -v 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/125k_1.fastq /data/work/jlevy/srr/150/125k_2.fastq > /data/work/jlevy/srr/150/res_bwa_125k.sam
+		sha256sum /data/work/jlevy/srr/150/res_bwa_125k.sam
 
 srr150: all
 		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa_no-zdrop-seedonly.sam
