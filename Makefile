@@ -39,7 +39,7 @@ short: all
 		sha256sum /data/work/jlevy/srr/150/res_bwa_125k.sam
 
 srr150: all
-		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa_no-zdrop-seedonly.sam
+		./$(PROG) mem -v 1 -t 18 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa_no-zdrop-seedonly.sam
 
 
 1000: all
