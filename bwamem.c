@@ -1204,6 +1204,7 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 	double full_mem_aln1_core;
 	double full_mem_chain2aln;
 	double chain_preprocess;
+	double time_mem_chain, time_mem_chain_flt, time_mem_flt_chained_seeds;
 	full_mem_aln1_core = realtime();
 
 
@@ -1217,9 +1218,17 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 
 	
 	chain_preprocess = realtime();
+
+	time_mem_chain = realtime();
 	chn = mem_chain(opt, bwt, bns, l_seq, (uint8_t*)seq, buf);
+	extension_time[tid].time_mem_chain += (realtime() - time_mem_chain);
+	time_mem_chain_flt = realtime();
 	chn.n = mem_chain_flt(opt, chn.n, chn.a);
+	extension_time[tid].time_mem_chain_flt += (realtime() - time_mem_chain_flt);
+	time_mem_flt_chained_seeds = realtime();
 	mem_flt_chained_seeds(opt, bns, pac, l_seq, (uint8_t*)seq, chn.n, chn.a);
+	extension_time[tid].time_mem_flt_chained_seeds += (realtime() - time_mem_flt_chained_seeds);
+
 	if (bwa_verbose >= 4) mem_print_chain(bns, &chn);
 	extension_time[tid].chain_preprocess += (realtime() - chain_preprocess);
 
