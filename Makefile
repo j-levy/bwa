@@ -1,6 +1,6 @@
 CC=			g++
 #CC=			clang --analyze
-CFLAGS=		-g -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive 
+CFLAGS=		-pg -Wall -Wno-unused-function -O3 -msse4.2 -std=c++11 -fpermissive 
 WRAP_MALLOC=-DUSE_MALLOC_WRAPPERS
 AR=			ar
 DFLAGS=		-DHAVE_PTHREAD $(WRAP_MALLOC)
