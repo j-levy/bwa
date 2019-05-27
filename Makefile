@@ -52,8 +52,12 @@ srr150: all
 1: all
 		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1_1.fastq /data/work/jlevy/srr/150/1_2.fastq > /data/work/jlevy/srr/150/res_bwa_1.sam
 
+## profiler
+BRANCHNAME=$(shell git rev-parse --abbrev-ref HEAD)
+prof: gmon.out
+	gprof $(PROG) > /data/work/jlevy/profile_$(BRANCHNAME).log
 
-
+# compiler
 .c.o:
 		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
 
