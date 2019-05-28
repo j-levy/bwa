@@ -1175,7 +1175,7 @@ mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *
 		a.cigar = bwa_gen_cigar2(opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, w2, bns->l_pac, pac, qe - qb, (uint8_t*)&query[qb], rb, re, &score, &a.n_cigar, &NM);
 		if (bwa_verbose >= 4) printf("* Final alignment: w2=%d, global_sc=%d, local_sc=%d\n", w2, score, ar->truesc);
 
-        fprintf(stderr, "* Final alignment: w2=%d, global_sc=%d, local_sc=%d, (qb, qe) = (%d, %d), (rb, re) = (%d, %d)\n", w2, score, ar->truesc, qb, qe, rb, re);
+        //fprintf(stderr, "* Final alignment: w2=%d, global_sc=%d, local_sc=%d, (qb, qe) = (%d, %d), (rb, re) = (%d, %d)\n", w2, score, ar->truesc, qb, qe, rb, re);
 		if (score == last_sc || w2 == opt->w<<2) break; // it is possible that global alignment and local alignment give different scores
 		last_sc = score;
 		w2 <<= 1;
