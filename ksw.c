@@ -412,6 +412,9 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
 		eh[j].h = eh[j-1].h - e_ins;
 	// adjust $w if it is too large
 	k = m * m;
+	for (i = 0, max = 0; i < k; ++i) // get the max score
+			max = max > mat[i]? max : mat[i];
+	
 	max_ins = (int)((double)(qlen * max + end_bonus - o_ins) / e_ins + 1.);
 	max_ins = max_ins > 1? max_ins : 1;
 	w = w < max_ins? w : max_ins;
