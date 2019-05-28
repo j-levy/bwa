@@ -1,6 +1,6 @@
-CC=			g++
+CXX=			g++
 #CC=			clang --analyze
-CFLAGS=		-pg -Wall -Wno-unused-function -O3 -msse4.2 -std=c++11 -fpermissive 
+CFLAGS= 	-pg -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive
 WRAP_MALLOC=-DUSE_MALLOC_WRAPPERS
 AR=			ar
 DFLAGS=		-DHAVE_PTHREAD $(WRAP_MALLOC)
@@ -21,53 +21,78 @@ ifeq ($(shell uname -s),Linux)
 	LIBS += -lrt
 endif
 
-.SUFFIXES:.c .o .cc
+## ==================
 
 
-run: all
-		./$(PROG) index fasta/target_batch.fasta
-		$(VALGRIND) ./$(PROG) mem fasta/target_batch.fasta fasta/query_batch.fasta > res.log
+
+#.SUFFIXES:.c .o .cc .cpp .cu
+%.o: %.c
+	$(CXX) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $(OBJ_DIR)$@
+%.o: %.cpp
+	$(CXX) -c $(CFLAGS) $(INCLUDES) $< -o $(OBJ_DIR)$@
+
+## toggle for valgrind/nvprof
+ANALYSIS_FILENAME=125k
+VALGRIND=
+#--track-origins=yes -tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes
+NVPROF=
+
+#NVPROF=nvprof --profile-api-trace none -s -f -o /tmp/.nvprof/$(ANALYSIS_FILENAME).nvprof
+## automatic names for logging
+BRANCHNAME=$(shell git rev-parse --abbrev-ref HEAD)
+REPONAME=$(shell basename `git rev-parse --show-toplevel`)
+LOGPROFPATH=/data/work/jlevy/profile/
+RESULTSPATH=/data/work/jlevy/results/
+
+nametest:
+	echo $(REPONAME) $(BRANCHNAME)
+## runners
 
 short-index: all 
-		./$(PROG) index /data/work/jlevy/hg19_short/chr01.fasta
+		./$(PROG) index /data/work/jlevy/hg19_short/chr1p1.fasta
+
+srr150index: all
+		./$(PROG) index /data/work/jlevy/hg19.fasta
+
+
 
 short: all
-		$(VALGRIND) ./$(PROG) mem -v 4 /data/work/jlevy/hg19_short/chr1p1.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.log 
-
-125k: all
-		./$(PROG) mem -t 1 -v 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/125k_1.fastq /data/work/jlevy/srr/150/125k_2.fastq > /data/work/jlevy/srr/150/res_bwa_125k.sam
-		sha256sum /data/work/jlevy/srr/150/res_bwa_125k.sam
-
-srr150: all
-		./$(PROG) mem -v 1 -t 18 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa_no-zdrop-seedonly.sam
-
-
-1000: all
-		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1000_1.fastq /data/work/jlevy/srr/150/1000_2.fastq > /data/work/jlevy/srr/150/res_bwa_1000.log
+		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t 1 -v 1 /data/work/jlevy/hg19_short/chr1p1.fasta /data/work/jlevy/srr_short4/srr150_1.fastq /data/work/jlevy/srr_short4/srr150_2.fastq > short.sam 
 
 10k: all
-		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/10000_1.fastq /data/work/jlevy/srr/150/10000_2.fastq > /data/work/jlevy/srr/150/res_bwa-gasal2_10000.sam
-		sha256sum /data/work/jlevy/srr/150/res_bwa-gasal2_10000.sam
+		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t 1 -v 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/10k_1.fastq /data/work/jlevy/srr/150/10k_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_10k.sam
+		sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_10k.sam
+125k: all
+		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t 1 -v 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/125k_1.fastq /data/work/jlevy/srr/150/125k_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_125k.sam
+		sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_125k.sam
 
-1: all
-		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1_1.fastq /data/work/jlevy/srr/150/1_2.fastq > /data/work/jlevy/srr/150/res_bwa_1.sam
+srr150: all
+		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
+		 sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
+
+#typing numbers is annoying
+srr: srr150
+
+srr250: all
+		$(VALGRIND) ./$(PROG) mem -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/250/SRR835433.fastq_1 /data/work/jlevy/srr/250/SRR835433.fastq_2 > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srrr250.sam
 
 ## profiler
-BRANCHNAME=$(shell git rev-parse --abbrev-ref HEAD)
-prof: gmon.out
-	gprof $(PROG) > /data/work/jlevy/profile_$(BRANCHNAME).log
+prof_125k: clean 125k gmon.out
+	gprof $(PROG) > $(LOGPROFPATH)$(REPONAME)_$(BRANCHNAME)_125k.log
 
-# compiler
-.c.o:
-		$(CC) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
+prof_srr150: clean srr150 gmon.out
+	gprof $(PROG) > $(LOGPROFPATH)$(REPONAME)_$(BRANCHNAME)_srr150.log
+
+
+## =================
 
 all: $(PROG)
 
 bwa:libbwa.a $(AOBJS) main.o
-		$(CC) $(CFLAGS) $(DFLAGS) $(AOBJS) main.o -o $@ -L. -lbwa $(LIBS)
+		$(CXX) $(CFLAGS) $(DFLAGS) $(AOBJS) main.o -o $@ -L. -lbwa $(LIBS)
 
 bwamem-lite:libbwa.a example.o
-		$(CC) $(CFLAGS) $(DFLAGS) example.o -o $@ -L. -lbwa $(LIBS)
+		$(CXX) $(CFLAGS) $(DFLAGS) example.o -o $@ -L. -lbwa $(LIBS)
 
 libbwa.a:$(LOBJS)
 		$(AR) -csru $@ $(LOBJS)
