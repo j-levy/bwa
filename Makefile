@@ -1,6 +1,6 @@
 CC=			g++
 #CC=			clang --analyze
-CFLAGS=		-g -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive 
+CFLAGS=		-pg -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive 
 WRAP_MALLOC=-DUSE_MALLOC_WRAPPERS
 AR=			ar
 DFLAGS=		-DHAVE_PTHREAD $(WRAP_MALLOC)
@@ -45,6 +45,9 @@ short3: all
 srr150: all
 		./$(PROG) mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > /data/work/jlevy/srr/150/res_bwa_master.sam
 
+125k: all
+		./$(PROG)  mem -v 1 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/125k_1.fastq /data/work/jlevy/srr/150/125k_2.fastq > /data/work/jlevy/srr/150/res_bwa-master_125k.sam
+		sha256sum /data/work/jlevy/srr/150/res_bwa-master_125k.sam
 
 1000: all
 		./$(PROG) mem -v 3 -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/1000_1.fastq /data/work/jlevy/srr/150/1000_2.fastq > /data/work/jlevy/srr/150/res_bwa_1000.log
