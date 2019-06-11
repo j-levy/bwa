@@ -76,7 +76,7 @@ mem_opt_t *mem_opt_init()
 	o->a = 1; o->b = 4;
 	o->o_del = o->o_ins = 6;
 	o->e_del = o->e_ins = 1;
-	o->w = 300;
+	o->w = 100;
 	o->T = 30;
 	o->zdrop = 100;
 	o->pen_unpaired = 17;
