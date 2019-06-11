@@ -1,6 +1,6 @@
 CXX=			g++
 #CC=			clang --analyze
-CFLAGS= 	-pg -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive
+CFLAGS= 	-g -Wall -Wno-unused-function -O2 -msse4.2 -std=c++11 -fpermissive
 WRAP_MALLOC=-DUSE_MALLOC_WRAPPERS
 AR=			ar
 DFLAGS=		-DHAVE_PTHREAD $(WRAP_MALLOC)
@@ -68,6 +68,10 @@ short: all
 
 srr150: all
 		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t 1 /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
+		 sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
+
+srr_threads: all
+		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t $(N_THREAD) /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
 		 sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
 
 #typing numbers is annoying
