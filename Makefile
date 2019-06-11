@@ -72,7 +72,6 @@ srr150: all
 
 srr_threads: all
 		 $(VALGRIND) $(NVPROF) ./$(PROG) mem -t $(N_THREAD) /data/work/jlevy/hg19.fasta /data/work/jlevy/srr/150/SRR949537_1.fastq /data/work/jlevy/srr/150/SRR949537_2.fastq > $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
-		 sha256sum $(RESULTSPATH)$(REPONAME)_$(BRANCHNAME)_srr150.sam
 
 #typing numbers is annoying
 srr: srr150
