@@ -23,6 +23,14 @@ typedef struct __smem_i smem_i;
 #define MEM_F_KEEP_SUPP_MAPQ 0x1000
 #define MEM_F_XB        0x2000
 
+#define SHORT (0)
+#define LONG (1)
+#define BOTH_SHORT_LONG (2)
+
+#define LEFT (0)
+#define RIGHT (1)
+#define BOTH_LEFT_RIGHT (2)
+
 typedef struct {
 	int a, b;               // match score and mismatch penalty
 	int o_del, e_del;
@@ -58,11 +66,27 @@ typedef struct {
 } mem_opt_t;
 
 typedef struct {
+	int query_begin, query_end;
+	int64_t ref_begin, ref_end;
+	int score;
+} reg_alnpart_t;
+
+typedef struct {
 	int64_t rb, re; // [rb,re): reference sequence in the alignment
 	int qb, qe;     // [qb,qe): query sequence in the alignment
 	int rid;        // reference seq ID
 	int score;      // best local SW score
 	int truesc;     // actual score corresponding to the aligned region; possibly smaller than $score
+	uint8_t align_sides; // number of sides wanted for alignment. 1 side = it's a long side, 2 sides = it's short and long.
+    uint8_t where_is_long; // tells where the "LONG" side is. If it's right, then the short side (if any - check align_sides) must be on the left.
+
+    /* Actually, you can have either only left, or only right, or both sides (if the seed is at the beginning or at the end of the sequence). So you must remember if you had to extend once or twice, and which side you had to extend. */
+	
+	reg_alnpart_t part[2]; // part is LEFT/RIGHT 
+
+	int query_seed_begin;
+    int ref_seed_begin;
+
 	int sub;        // 2nd best SW score
 	int alt_sc;
 	int csub;       // SW score of a tandem hit

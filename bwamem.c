@@ -16,7 +16,9 @@
 #include "ksort.h"
 #include "utils.h"
 
-//#define DEBUG
+//#define DEBUG2
+//#define DEBUG3
+
 
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
@@ -47,15 +49,22 @@
 
 static const bntseq_t *global_bns = 0; // for debugging only
 
+
+void part_printerz(reg_alnpart_t res, int SIDE)
+{
+	fprintf(stderr, "\t\t[PART_PRINT %s] query_end = (%d), ref_end = (%d), score = (%d)\n", (SIDE == LEFT ? " LEFT" : "RIGHT"), res.query_end, res.ref_end, res.score);
+}
+
 void score_printerz(mem_alnreg_t *res)
 {
-	fprintf(stderr, "##### SCORE PRINTER #####\n");
-	//part_printerz(res->part[LEFT], LEFT);
-	//part_printerz(res->part[RIGHT], RIGHT);
+	//fprintf(stderr, "##### SCORE PRINTER #####\n");
 
-	fprintf(stderr, "[SCOR_PRINT] qb, qe = (%d, %d), diff=%d\n", res->qb, res->qe, res->qe - res->qb);
-	fprintf(stderr, "[SCOR_PRINT] rb, re = (%d, %d), diff=%d\n", res->rb, res->re, res->re - res->rb);
-	fprintf(stderr, "[SCOR_PRINT] score, truesc = (%d, %d)\n", res->score, res->truesc);
+	fprintf(stderr, "\t[SCOR_PRINT] align_sides=%d, where_is_long=%s\n", res->align_sides, (res->where_is_long == LEFT ? " LEFT" : "RIGHT"));
+	fprintf(stderr, "\t[SCOR_PRINT] qb, qe = (%d, %d), rb, re = (%d, %d), score, truesc = (%d, %d), %s %s \n", res->qb, res->qe, res->rb, res->re, res->score, res->truesc, (res->qb < 0? "ERROR qb<0":""), (res->qe > 150? "ERROR qe>150":""));
+	fprintf(stderr, "\t[SCOR_PRINT] query_seed_begin=%d, ref_seed_begin=%d, seedlen0=%d\n", res->query_seed_begin, res->ref_seed_begin, res->seedlen0);
+	part_printerz(res->part[LEFT], LEFT);
+	part_printerz(res->part[RIGHT], RIGHT);
+	fprintf(stderr, "\n");
 }
 
 
@@ -67,7 +76,7 @@ mem_opt_t *mem_opt_init()
 	o->a = 1; o->b = 4;
 	o->o_del = o->o_ins = 6;
 	o->e_del = o->e_ins = 1;
-	o->w = 100;
+	o->w = 300;
 	o->T = 30;
 	o->zdrop = 100;
 	o->pen_unpaired = 17;
@@ -643,8 +652,12 @@ static inline int cal_max_gap(const mem_opt_t *opt, int qlen)
 
 #define MAX_BAND_TRY  1
 
-void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av)
+void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const uint8_t *query, const mem_chain_t *c, mem_alnreg_v *av, int tid)
 {
+	extern time_struct *extension_time;
+    extern uint64_t *no_of_extensions;
+	double time_extend;
+
 	int i, k, rid, max_off[2], aw[2]; // aw: actual bandwidth used in extension
 	int64_t l_pac = bns->l_pac, rmax[2], tmp, max = 0;
 	const mem_seed_t *s;
@@ -773,7 +786,11 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Left ref:   "); for (j = 0; j < tmp; ++j) putchar("ACGTN"[(int)rs[j]]); putchar('\n');
 					printf("*** Left query: "); for (j = 0; j < s->qbeg; ++j) putchar("ACGTN"[(int)qs[j]]); putchar('\n');
 				}
+				no_of_extensions[tid]++;
+				time_extend = realtime();
 				a->score = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
+				extension_time[tid].aln_kernel += (realtime() - time_extend);
+
 				score_l = a->score - prev;
 				if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[0], max_off[0]); fflush(stdout); }
 				if (a->score == prev || max_off[0] < (aw[0]>>1) + (aw[0]>>2)) break;
@@ -803,7 +820,12 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 					printf("*** Right query: "); for (j = 0; j < l_query - qe; ++j) putchar("ACGTN"[(int)query[qe+j]]); putchar('\n');
 				}
 				int t = a->score;
+
+				no_of_extensions[tid]++;
+				time_extend = realtime();
 				a->score = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, sc0, &qle, &tle, &gtle, &gscore, &max_off[1]);
+				extension_time[tid].aln_kernel += (realtime() - time_extend);
+
 				score_r = a->score - t;
 				if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", prev, a->score, aw[1], max_off[1]); fflush(stdout); }
 				if (a->score == prev || max_off[1] < (aw[1]>>1) + (aw[1]>>2)) break;
@@ -961,6 +983,7 @@ void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq
 		kputsn("\tNM:i:", 6, str); kputw(p->NM, str);
 		kputsn("\tMD:Z:", 6, str); kputs((char*)(p->cigar + p->n_cigar), str);
 	}
+	// tag disabled as it is not present in v.0.7.13
 	//if (m && m->n_cigar) { kputsn("\tMC:Z:", 6, str); add_cigar(opt, m, str, which); }
 	if (p->score >= 0) { kputsn("\tAS:i:", 6, str); kputw(p->score, str); }
 	if (p->sub >= 0) { kputsn("\tXS:i:", 6, str); kputw(p->sub, str); }
@@ -1106,8 +1129,20 @@ void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, 
 	}
 }
 
-mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int l_seq, char *seq, void *buf)
+mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int l_seq, char *seq, void *buf, int tid)
 {
+
+	extern time_struct *extension_time;
+    extern uint64_t *no_of_extensions;
+
+	double full_mem_aln1_core;
+	double full_mem_chain2aln;
+	double chain_preprocess;
+	double time_mem_chain, time_mem_chain_flt, time_mem_flt_chained_seeds;
+	full_mem_aln1_core = realtime();
+
+
+
 	int i;
 	mem_chain_v chn;
 	mem_alnreg_v regs;
@@ -1115,16 +1150,31 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 	for (i = 0; i < l_seq; ++i) // convert to 2-bit encoding if we have not done so
 		seq[i] = seq[i] < 4? seq[i] : nst_nt4_table[(int)seq[i]];
 
+	
+	chain_preprocess = realtime();
+
+	time_mem_chain = realtime();
 	chn = mem_chain(opt, bwt, bns, l_seq, (uint8_t*)seq, buf);
+	extension_time[tid].time_mem_chain += (realtime() - time_mem_chain);
+	time_mem_chain_flt = realtime();
 	chn.n = mem_chain_flt(opt, chn.n, chn.a);
+	extension_time[tid].time_mem_chain_flt += (realtime() - time_mem_chain_flt);
+	time_mem_flt_chained_seeds = realtime();
 	mem_flt_chained_seeds(opt, bns, pac, l_seq, (uint8_t*)seq, chn.n, chn.a);
+	extension_time[tid].time_mem_flt_chained_seeds += (realtime() - time_mem_flt_chained_seeds);
+
 	if (bwa_verbose >= 4) mem_print_chain(bns, &chn);
+	extension_time[tid].chain_preprocess += (realtime() - chain_preprocess);
 
 	kv_init(regs);
 	for (i = 0; i < chn.n; ++i) {
 		mem_chain_t *p = &chn.a[i];
 		if (bwa_verbose >= 4) err_printf("* ---> Processing chain(%d) <---\n", i);
-		mem_chain2aln(opt, bns, pac, l_seq, (uint8_t*)seq, p, &regs);
+
+		full_mem_chain2aln = realtime();
+		mem_chain2aln(opt, bns, pac, l_seq, (uint8_t*)seq, p, &regs, tid);
+		extension_time[tid].full_mem_chain2aln += (realtime() - full_mem_chain2aln);
+
 		free(chn.a[i].seeds);
 	}
 	free(chn.a);
@@ -1141,6 +1191,9 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 		if (p->rid >= 0 && bns->anns[p->rid].is_alt)
 			p->is_alt = 1;
 	}
+
+	extension_time[tid].full_mem_aln1_core += (realtime() - full_mem_aln1_core);
+
 	return regs;
 }
 
@@ -1175,7 +1228,9 @@ mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *
 		a.cigar = bwa_gen_cigar2(opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, w2, bns->l_pac, pac, qe - qb, (uint8_t*)&query[qb], rb, re, &score, &a.n_cigar, &NM);
 		if (bwa_verbose >= 4) printf("* Final alignment: w2=%d, global_sc=%d, local_sc=%d\n", w2, score, ar->truesc);
 
-        //fprintf(stderr, "* Final alignment: w2=%d, global_sc=%d, local_sc=%d, (qb, qe) = (%d, %d), (rb, re) = (%d, %d)\n", w2, score, ar->truesc, qb, qe, rb, re);
+		// J.L. 2019-05-20 Disabled stderr printer
+        // fprintf(stderr, "* Final alignment: w2=%d, global_sc=%d, local_sc=%d, (qb, qe) = (%d, %d), (rb, re) = (%d, %d)\n", w2, score, ar->truesc, qb, qe, rb, re);
+		
 		if (score == last_sc || w2 == opt->w<<2) break; // it is possible that global alignment and local alignment give different scores
 		last_sc = score;
 		w2 <<= 1;
@@ -1235,12 +1290,12 @@ static void worker1(void *data, int i, int tid)
 	worker_t *w = (worker_t*)data;
 	if (!(w->opt->flag&MEM_F_PE)) {
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s' <=====\n", w->seqs[i].name);
-		w->regs[i] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i].l_seq, w->seqs[i].seq, w->aux[tid]);
+		w->regs[i] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i].l_seq, w->seqs[i].seq, w->aux[tid], tid);
 	} else {
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s'/1 <=====\n", w->seqs[i<<1|0].name);
-		w->regs[i<<1|0] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|0].l_seq, w->seqs[i<<1|0].seq, w->aux[tid]);
+		w->regs[i<<1|0] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|0].l_seq, w->seqs[i<<1|0].seq, w->aux[tid], tid);
 		if (bwa_verbose >= 4) printf("=====> Processing read '%s'/2 <=====\n", w->seqs[i<<1|1].name);
-		w->regs[i<<1|1] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|1].l_seq, w->seqs[i<<1|1].seq, w->aux[tid]);
+		w->regs[i<<1|1] = mem_align1_core(w->opt, w->bwt, w->bns, w->pac, w->seqs[i<<1|1].l_seq, w->seqs[i<<1|1].seq, w->aux[tid], tid);
 	}
 }
 

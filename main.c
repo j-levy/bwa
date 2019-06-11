@@ -3,6 +3,8 @@
 #include "kstring.h"
 #include "utils.h"
 
+#define DEBUG_TIMELOG
+
 #ifndef PACKAGE_VERSION
 #define PACKAGE_VERSION "0.7.17-r1194-dirty"
 #endif
@@ -58,11 +60,32 @@ static int usage()
 	return 1;
 }
 
+// timers. Copied from bwa-gasal2. Not all fields are used.
+time_struct *extension_time;
+uint64_t *no_of_extensions;
+double *load_balance_waste_time;
+double total_load_balance_waste_time = 0.0;
+
 int main(int argc, char *argv[])
 {
 	extern char *bwa_pg;
 	int i, ret;
 	double t_real;
+	
+	// timers and #extensions initialization.
+	extension_time = (time_struct*)calloc(100, sizeof(time_struct));
+	no_of_extensions = (uint64_t*)calloc(100, sizeof(uint64_t));
+	uint64_t total_extensions = 0;
+
+	extern FILE* f_exec_time;
+	f_exec_time = NULL;
+	f_exec_time = fopen("time.log", "w+");
+	if (f_exec_time == NULL)
+	{
+		fprintf(stderr, "[main] error: could not open/create the log file time.log\nAborting.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	kstring_t pg = {0,0,0};
 	t_real = realtime();
 	ksprintf(&pg, "@PG\tID:bwa\tPN:bwa\tVN:%s\tCL:%s", PACKAGE_VERSION, argv[0]);
@@ -98,7 +121,55 @@ int main(int argc, char *argv[])
 		for (i = 0; i < argc; ++i)
 			fprintf(stderr, " %s", argv[i]);
 		fprintf(stderr, "\n[%s] Real time: %.3f sec; CPU: %.3f sec\n", __func__, realtime() - t_real, cputime());
+
+		fprintf(f_exec_time,"Total_time = %.3f\t", realtime() - t_real);
+		double total_time = realtime() - t_real;
+		double total_extension_time = 0.0;
+		int n_threads = 0;
+		#ifdef DEBUG_TIMELOG
+		while (no_of_extensions[n_threads] > 0)
+			n_threads++;
+		fprintf(stderr, "n_threads = %d\n", n_threads);
+		for (i = 0; i < n_threads; i++) // display for max. 12 threads.
+		{
+			//fprintf(stderr, "Total time spent in host_mem_alloc by thread %d = %.3f seconds\n", i, extension_time[i].host_mem_alloc);
+			//fprintf(stderr, "Percentage of total time spent in extension by thread %d = %.3f\n", i, (extension_time[i]/total_time)*100);
+			//fprintf(stderr, "Percentage of total time spent in extension by thread %d = %.3f\n", i, (extension_time[i]/total_time)*100);
+			fprintf(stderr, "Total time spent in mem_aln1_core by thread %d = %.3f seconds\n", i, extension_time[i].full_mem_aln1_core);
+			fprintf(stderr, "\tin chain_preprocess by thread %d = %.3f seconds\n", i, extension_time[i].chain_preprocess);
+			fprintf(stderr, "\t\tin mem_chain by thread %d = %.3f seconds\n", i, extension_time[i].time_mem_chain);
+			fprintf(stderr, "\t\tin mem_chain_flt by thread %d = %.3f seconds\n", i, extension_time[i].time_mem_chain_flt);
+			fprintf(stderr, "\t\tin mem_flt_chained_seeds by thread %d = %.3f seconds\n", i, extension_time[i].time_mem_flt_chained_seeds);
+			fprintf(stderr, "\tin mem_chain2aln by thread %d = %.3f seconds\n", i, extension_time[i].full_mem_chain2aln);
+			fprintf(stderr, "\t\tin gpu_aln_kernel by thread %d = %.3f seconds\n", i, extension_time[i].aln_kernel);
+
+			/*
+			fprintf(stderr, "Total time spent in get_results_actual by thread %d = %.3f seconds\n", i, extension_time[i].get_results_actual);
+			fprintf(stderr, "Total time spent in get_results_wasted by thread %d = %.3f seconds\n", i, extension_time[i].get_results_wasted);
+			*/
+			total_extensions += no_of_extensions[i];
+			
+			fprintf(stderr, "Total time spent in extension in gpu by thread %d (excluding mem_alloc and mem_free)= %.3f seconds\n", i, extension_time[i].aln_kernel + extension_time[i].get_results_actual + extension_time[i].get_results_wasted);
+			total_extension_time += (extension_time[i].aln_kernel + extension_time[i].get_results_actual + extension_time[i].get_results_wasted);
+		}
+		fprintf(stderr, "Total time spent in gpu_mem_alloc= %.3f seconds\n", extension_time[0].gpu_mem_alloc);
+		fprintf(stderr, "Total time spent in gpu_mem_free = %.3f seconds\n", extension_time[0].gpu_mem_free);
+		//total_extension_time += (extension_time[0].gpu_mem_alloc + extension_time[0].gpu_mem_free);
+
+		fprintf(f_exec_time,"Average extension time = %.3f\t", (total_extension_time/n_threads) + (extension_time[0].gpu_mem_alloc + extension_time[0].gpu_mem_free));
+		fprintf(f_exec_time,"Average extension percentage = %.3f\t", ((total_extension_time/n_threads)/total_time)*100);
+		fprintf(stderr,"Total no. of extensions = %llu\n", total_extensions);
+		//fprintf(f_exec_time, "Percentage time wasted due to imperfect load balancing = %.3f\n", (total_load_balance_waste_time/total_time)*100);
+		#endif
+
+
+
 	}
 	free(bwa_pg);
+
+	free(extension_time);
+	free(no_of_extensions);
+	free(load_balance_waste_time);
+	fclose(f_exec_time);
 	return ret;
 }

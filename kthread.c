@@ -44,6 +44,8 @@ static inline long steal_work(kt_for_t *t)
 
 static void *ktf_worker(void *data)
 {
+	extern double *load_balance_waste_time;
+
 	ktf_worker_t *w = (ktf_worker_t*)data;
 	long i;
 	for (;;) {
@@ -53,6 +55,7 @@ static void *ktf_worker(void *data)
 	}
 	while ((i = steal_work(w->t)) >= 0)
 		w->t->func(w->t->data, i, w - w->t->w);
+
 	pthread_exit(0);
 }
 

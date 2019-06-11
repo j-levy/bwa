@@ -112,8 +112,13 @@ static void update_a(mem_opt_t *opt, const mem_opt_t *opt0)
 	}
 }
 
+char run_exec_time[20];
+FILE* f_exec_time;
+
 int main_mem(int argc, char *argv[])
 {
+
+
 	mem_opt_t *opt, opt0;
 	int fd, fd2, i, c, ignore_alt = 0, no_mt_io = 0;
 	int fixed_chunk_size = -1;
@@ -123,6 +128,11 @@ int main_mem(int argc, char *argv[])
 	void *ko = 0, *ko2 = 0;
 	mem_pestat_t pes[4];
 	ktp_aux_t aux;
+
+	// file opening for time logging
+	extern time_struct *extension_time;
+	//run_exec_time = "run_exec_time.txt";
+	sprintf(run_exec_time, "run_exec_time.txt");
 
 	memset(&aux, 0, sizeof(ktp_aux_t));
 	memset(pes, 0, 4 * sizeof(mem_pestat_t));
@@ -356,6 +366,10 @@ int main_mem(int argc, char *argv[])
 			opt->flag |= MEM_F_PE;
 		}
 	}
+
+	double time_extend = realtime();
+	extension_time[0].gpu_mem_alloc += (realtime() - time_extend);
+
 	bwa_print_sam_hdr(aux.idx->bns, hdr_line);
 	aux.actual_chunk_size = fixed_chunk_size > 0? fixed_chunk_size : opt->chunk_size * opt->n_threads;
 	kt_pipeline(no_mt_io? 1 : 2, process, &aux, 3);
